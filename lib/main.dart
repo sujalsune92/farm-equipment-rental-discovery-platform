@@ -14,7 +14,6 @@ import 'models/models.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── Initialize Supabase (replaces Firebase.initializeApp) ──────────────────
   await Supabase.initialize(
     url: AppConstants.supabaseUrl,
     anonKey: AppConstants.supabaseAnonKey,
@@ -56,7 +55,7 @@ class KisanYantraApp extends StatelessWidget {
         return _slide(const ForgotPasswordScreen());
       case '/home':
         return _fade(const UnifiedHomeScreen());
-      case '/farmer': // legacy path → unified experience
+      case '/farmer':
       case '/owner':
         return _fade(const UnifiedHomeScreen());
       case '/equipment-detail':
@@ -69,8 +68,6 @@ class KisanYantraApp extends StatelessWidget {
           booking: args['booking'] as BookingModel,
           isOwner: args['isOwner'] as bool? ?? false,
         ));
-      case '/owner':
-        return _fade(const OwnerHomeScreen());
       case '/add-listing':
         return _slide(AddEditListingScreen(existing: settings.arguments as EquipmentListing?));
       case '/admin':

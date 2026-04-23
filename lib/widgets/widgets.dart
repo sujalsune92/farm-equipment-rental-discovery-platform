@@ -238,8 +238,18 @@ class BookingCard extends StatelessWidget {
                       color: AppColors.primary.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.agriculture,
-                        color: AppColors.primary, size: 26),
+                    child: booking.listingImageUrl.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              booking.listingImageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.agriculture,
+                                  color: AppColors.primary, size: 26),
+                            ),
+                          )
+                        : const Icon(Icons.agriculture,
+                            color: AppColors.primary, size: 26),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

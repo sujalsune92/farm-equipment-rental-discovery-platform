@@ -14,6 +14,7 @@ class UnifiedHomeScreen extends StatefulWidget {
 }
 
 class _UnifiedHomeScreenState extends State<UnifiedHomeScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _tabIndex = 0;
 
   final _tabs = const [
@@ -44,12 +45,49 @@ class _UnifiedHomeScreenState extends State<UnifiedHomeScreen> {
     }
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: _buildDrawer(context),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
+        title: const Text('KisanYantra'),
+      ),
       body: IndexedStack(index: _tabIndex, children: _tabs),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _tabIndex,
         onTap: (i) => setState(() => _tabIndex = i),
         items: _items,
         type: BottomNavigationBarType.fixed,
+      ),
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'homeDrawerFab',
+        mini: true,
+        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        child: const Icon(Icons.menu),
+      ),
+    );
+  }
+
+  Drawer _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: SafeArea(
+        child: ListView(
+          children: [
+            const DrawerHeader(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text('KisanYantra', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                  SizedBox(height: 4),
+                  Text('Tools & Shortcuts', style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

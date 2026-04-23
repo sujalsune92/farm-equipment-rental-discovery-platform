@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -81,7 +81,7 @@ class OwnerDashboardTab extends StatelessWidget {
             builder: (_, snap) {
               final all      = snap.data ?? [];
               final pending  = all.where((b) => b.status == AppConstants.statusPending).length;
-              final approved = all.where((b) => b.status == AppConstants.statusApproved).length;
+              final approved = all.where((b) => b.status == AppConstants.statusApproved || b.status == AppConstants.statusInUse).length;
               final done     = all.where((b) => b.status == AppConstants.statusCompleted).length;
               return Row(children: [
                 _stat(context, '$pending',  'Pending',  Icons.hourglass_empty,    AppColors.warning),
@@ -90,6 +90,30 @@ class OwnerDashboardTab extends StatelessWidget {
                 const SizedBox(width: 12),
                 _stat(context, '$done',     'Done',     Icons.done_all,            AppColors.stone),
               ]);
+            },
+          ),
+          const SizedBox(height: 12),
+          StreamBuilder<List<BookingModel>>(
+            stream: bs.getOwnerBookings(auth.currentUser!.id),
+            builder: (_, snap) {
+              final all = snap.data ?? [];
+              final revenue = all.where((b) => b.paymentStatus == 'paid').fold<double>(0, (sum, b) => sum + b.totalPrice);
+              final daysHorizon = 30;
+              final periodStart = DateTime.now().subtract(const Duration(days: 30));
+              final periodBookings = all.where((b) => b.startDate.isAfter(periodStart)).toList();
+              final utilization = _computeUtilization(periodBookings, daysHorizon);
+              final repeatFarmers = all.map((b) => b.farmerId).fold<Map<String,int>>({}, (map, id) { map[id] = (map[id] ?? 0) + 1; return map; });
+              final repeatPct = repeatFarmers.isEmpty ? 0 : (repeatFarmers.values.where((c) => c > 1).length / repeatFarmers.length * 100);
+              return Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('30-day Insights', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  _insightRow('Revenue (paid)', '₹${revenue.toStringAsFixed(0)}'),
+                  _insightRow('Utilization', '${utilization.toStringAsFixed(1)}%'),
+                  _insightRow('Repeat renters', '${repeatPct.toStringAsFixed(0)}%'),
+                ],
+              )));
             },
           ),
           const SizedBox(height: 20),
@@ -118,6 +142,33 @@ class OwnerDashboardTab extends StatelessWidget {
       Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
     ]))));
   }
+
+  double _computeUtilization(List<BookingModel> bookings, int daysHorizon) {
+    final horizonHours = daysHorizon * 24.0;
+    double bookedHours = 0;
+    for (final b in bookings) {
+      if (b.durationType == 'hourly' && b.startTime != null && b.endTime != null) {
+        bookedHours += b.endTime!.difference(b.startTime!).inMinutes / 60.0;
+      } else if (b.durationType == 'half_day') {
+        bookedHours += 12;
+      } else {
+        bookedHours += (b.durationDays * 24);
+      }
+    }
+    if (horizonHours == 0) return 0;
+    final pct = (bookedHours / horizonHours) * 100;
+    return pct.clamp(0, 100);
+  }
+
+  Widget _insightRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
+      ]),
+    );
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -132,6 +183,7 @@ class OwnerListingsTab extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('My Listings')),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'ownerListingsAddFab',
         icon: const Icon(Icons.add), label: const Text('Add Equipment'),
         backgroundColor: AppColors.primary,
         onPressed: () => Navigator.pushNamed(context, '/add-listing'),
@@ -209,7 +261,7 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   final _addrCtrl   = TextEditingController();
 
   String _type = AppConstants.equipmentTypes.first;
-  List<File> _newImages = [];
+  List<Uint8List> _newImageBytes = [];
   List<String> _existingImageUrls = [];
   bool _loading = false;
   bool _locating = false;
@@ -261,12 +313,18 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   Future<void> _pickImages() async {
     final picker = ImagePicker();
     final picked = await picker.pickMultiImage(imageQuality: 70);
-    final remaining = AppConstants.maxImages - _existingImageUrls.length - _newImages.length;
+    final remaining = AppConstants.maxImages - _existingImageUrls.length - _newImageBytes.length;
     if (remaining <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Maximum 5 images allowed.')));
       return;
     }
-    setState(() => _newImages.addAll(picked.take(remaining).map((x) => File(x.path))));
+    final selected = picked.take(remaining).toList();
+    final bytes = <Uint8List>[];
+    for (final image in selected) {
+      bytes.add(await image.readAsBytes());
+    }
+    if (!mounted) return;
+    setState(() => _newImageBytes.addAll(bytes));
   }
 
   Future<void> _submit() async {
@@ -279,9 +337,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     final auth = context.read<AuthProvider>();
     try {
       List<String> imageUrls = List.from(_existingImageUrls);
-      if (_newImages.isNotEmpty) {
+      if (_newImageBytes.isNotEmpty) {
         final id = _isEdit ? widget.existing!.id : DateTime.now().millisecondsSinceEpoch.toString();
-        imageUrls.addAll(await _listingService.uploadImages(_newImages, id));
+        imageUrls.addAll(await _listingService.uploadImagesBytes(_newImageBytes, id));
       }
 
       final listing = EquipmentListing(
@@ -331,8 +389,11 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
           ..._existingImageUrls.map((url) => _thumb(
               child: Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported)),
               onRemove: () => setState(() => _existingImageUrls.remove(url)))),
-          ..._newImages.map((f) => _thumb(child: Image.file(f, fit: BoxFit.cover), onRemove: () => setState(() => _newImages.remove(f)))),
-          if (_existingImageUrls.length + _newImages.length < AppConstants.maxImages)
+          ..._newImageBytes.asMap().entries.map((entry) => _thumb(
+                child: Image.memory(entry.value, fit: BoxFit.cover),
+                onRemove: () => setState(() => _newImageBytes.removeAt(entry.key)),
+              )),
+          if (_existingImageUrls.length + _newImageBytes.length < AppConstants.maxImages)
             GestureDetector(onTap: _pickImages, child: Container(
               width: 100, margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(border: Border.all(color: AppColors.divider), borderRadius: BorderRadius.circular(10), color: AppColors.background),

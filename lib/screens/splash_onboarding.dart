@@ -29,11 +29,14 @@ class _SplashScreenState extends State<SplashScreen>
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut));
     _ctrl.forward();
 
-    Future.delayed(const Duration(seconds: 2), _navigate);
+    _navigateWhenReady();
   }
 
-  void _navigate() {
+  Future<void> _navigateWhenReady() async {
     final auth = context.read<AuthProvider>();
+    await auth.waitForBootstrap();
+    if (!mounted) return;
+
     if (auth.isLoggedIn) {
       if (auth.isAdmin) {
         Navigator.pushReplacementNamed(context, '/admin');

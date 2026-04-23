@@ -64,6 +64,37 @@ class UserModel {
         'total_reviews': totalReviews,
         'is_verified': isVerified,
       };
+
+  UserModel copyWith({
+    String? name,
+    String? email,
+    String? phone,
+    String? role,
+    String? profileImageUrl,
+    String? address,
+    double? latitude,
+    double? longitude,
+    double? averageRating,
+    int? totalReviews,
+    DateTime? createdAt,
+    bool? isVerified,
+  }) {
+    return UserModel(
+      id: id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      role: role ?? this.role,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      address: address ?? this.address,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      averageRating: averageRating ?? this.averageRating,
+      totalReviews: totalReviews ?? this.totalReviews,
+      createdAt: createdAt ?? this.createdAt,
+      isVerified: isVerified ?? this.isVerified,
+    );
+  }
 }
 
 // ── EquipmentListing ──────────────────────────────────────────────────────────
@@ -78,10 +109,16 @@ class EquipmentListing {
   final String description;
   final String type;
   final double pricePerDay;
+  final double? hourlyRate;
+  final double? halfDayRate;
+  final double? fullDayRate;
   final List<String> imageUrls;
   final double latitude;
   final double longitude;
   final String address;
+  final bool insuranceAvailable;
+  final double securityDepositRequired;
+  final Map<String, dynamic>? packagePricing;
   final bool isActive;
   final double averageRating;
   final int totalBookings;
@@ -98,10 +135,16 @@ class EquipmentListing {
     required this.description,
     required this.type,
     required this.pricePerDay,
+    this.hourlyRate,
+    this.halfDayRate,
+    this.fullDayRate,
     required this.imageUrls,
     required this.latitude,
     required this.longitude,
     required this.address,
+    this.insuranceAvailable = false,
+    this.securityDepositRequired = 0,
+    this.packagePricing,
     this.isActive = true,
     this.averageRating = 0.0,
     this.totalBookings = 0,
@@ -119,10 +162,16 @@ class EquipmentListing {
         description: m['description'] ?? '',
         type: m['type'] ?? '',
         pricePerDay: (m['price_per_day'] as num).toDouble(),
+        hourlyRate: (m['hourly_rate'] as num?)?.toDouble(),
+        halfDayRate: (m['half_day_rate'] as num?)?.toDouble(),
+        fullDayRate: (m['full_day_rate'] as num?)?.toDouble(),
         imageUrls: List<String>.from(m['image_urls'] ?? []),
         latitude: (m['latitude'] as num).toDouble(),
         longitude: (m['longitude'] as num).toDouble(),
         address: m['address'] ?? '',
+        insuranceAvailable: m['insurance_available'] ?? false,
+        securityDepositRequired: (m['security_deposit_required'] as num?)?.toDouble() ?? 0,
+        packagePricing: m['package_pricing'] as Map<String, dynamic>?,
         isActive: m['is_active'] ?? true,
         averageRating: (m['average_rating'] as num?)?.toDouble() ?? 0.0,
         totalBookings: m['total_bookings'] ?? 0,
@@ -138,10 +187,16 @@ class EquipmentListing {
         'description': description,
         'type': type,
         'price_per_day': pricePerDay,
+        'hourly_rate': hourlyRate,
+        'half_day_rate': halfDayRate,
+        'full_day_rate': fullDayRate,
         'image_urls': imageUrls,
         'latitude': latitude,
         'longitude': longitude,
         'address': address,
+        'insurance_available': insuranceAvailable,
+        'security_deposit_required': securityDepositRequired,
+        'package_pricing': packagePricing,
         'is_active': isActive,
         'average_rating': averageRating,
         'total_bookings': totalBookings,
@@ -176,6 +231,19 @@ class BookingModel {
   final double pricePerDay;
   final double totalPrice;
   final String status;
+  final String durationType;
+  final DateTime? startTime;
+  final DateTime? endTime;
+  final bool insuranceOpted;
+  final double securityDeposit;
+  final String paymentStatus;
+  final String? invoiceUrl;
+  final DateTime? estimatedReturn;
+  final double? distanceKm;
+  final double? costEstimate;
+  final String? cancelledBy;
+  final String? cancelReason;
+  final String? rescheduledFromBookingId;
   final String? usageDetails;
   final String? declineReason;
   final DateTime createdAt;
@@ -197,6 +265,19 @@ class BookingModel {
     required this.pricePerDay,
     required this.totalPrice,
     required this.status,
+    this.durationType = 'full_day',
+    this.startTime,
+    this.endTime,
+    this.insuranceOpted = false,
+    this.securityDeposit = 0,
+    this.paymentStatus = 'pending',
+    this.invoiceUrl,
+    this.estimatedReturn,
+    this.distanceKm,
+    this.costEstimate,
+    this.cancelledBy,
+    this.cancelReason,
+    this.rescheduledFromBookingId,
     this.usageDetails,
     this.declineReason,
     required this.createdAt,
@@ -221,6 +302,19 @@ class BookingModel {
         pricePerDay: (m['price_per_day'] as num).toDouble(),
         totalPrice: (m['total_price'] as num).toDouble(),
         status: m['status'] ?? 'Pending',
+        durationType: m['duration_type'] ?? 'full_day',
+        startTime: m['start_time'] != null ? DateTime.parse(m['start_time'] as String) : null,
+        endTime: m['end_time'] != null ? DateTime.parse(m['end_time'] as String) : null,
+        insuranceOpted: m['insurance_opted'] ?? false,
+        securityDeposit: (m['security_deposit'] as num?)?.toDouble() ?? 0,
+        paymentStatus: m['payment_status'] ?? 'pending',
+        invoiceUrl: m['invoice_url'],
+        estimatedReturn: m['estimated_return'] != null ? DateTime.parse(m['estimated_return'] as String) : null,
+        distanceKm: (m['distance_km'] as num?)?.toDouble(),
+        costEstimate: (m['cost_estimate'] as num?)?.toDouble(),
+        cancelledBy: m['cancelled_by'],
+        cancelReason: m['cancel_reason'],
+        rescheduledFromBookingId: m['rescheduled_from_booking_id'],
         usageDetails: m['usage_details'],
         declineReason: m['decline_reason'],
         createdAt: DateTime.parse(m['created_at'] as String),
@@ -242,9 +336,92 @@ class BookingModel {
         'price_per_day': pricePerDay,
         'total_price': totalPrice,
         'status': status,
+        'duration_type': durationType,
+        'start_time': startTime?.toIso8601String(),
+        'end_time': endTime?.toIso8601String(),
+        'insurance_opted': insuranceOpted,
+        'security_deposit': securityDeposit,
+        'payment_status': paymentStatus,
+        'invoice_url': invoiceUrl,
+        'estimated_return': estimatedReturn?.toIso8601String(),
+        'distance_km': distanceKm,
+        'cost_estimate': costEstimate,
+        'cancelled_by': cancelledBy,
+        'cancel_reason': cancelReason,
+        'rescheduled_from_booking_id': rescheduledFromBookingId,
         'usage_details': usageDetails,
         'decline_reason': declineReason,
       };
+
+  BookingModel copyWith({
+    String? id,
+    String? listingId,
+    String? listingName,
+    String? listingType,
+    String? listingImageUrl,
+    String? farmerId,
+    String? farmerName,
+    String? farmerPhone,
+    String? ownerId,
+    String? ownerName,
+    DateTime? startDate,
+    DateTime? endDate,
+    double? pricePerDay,
+    double? totalPrice,
+    String? status,
+    String? durationType,
+    DateTime? startTime,
+    DateTime? endTime,
+    bool? insuranceOpted,
+    double? securityDeposit,
+    String? paymentStatus,
+    String? invoiceUrl,
+    DateTime? estimatedReturn,
+    double? distanceKm,
+    double? costEstimate,
+    String? cancelledBy,
+    String? cancelReason,
+    String? rescheduledFromBookingId,
+    String? usageDetails,
+    String? declineReason,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return BookingModel(
+      id: id ?? this.id,
+      listingId: listingId ?? this.listingId,
+      listingName: listingName ?? this.listingName,
+      listingType: listingType ?? this.listingType,
+      listingImageUrl: listingImageUrl ?? this.listingImageUrl,
+      farmerId: farmerId ?? this.farmerId,
+      farmerName: farmerName ?? this.farmerName,
+      farmerPhone: farmerPhone ?? this.farmerPhone,
+      ownerId: ownerId ?? this.ownerId,
+      ownerName: ownerName ?? this.ownerName,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      pricePerDay: pricePerDay ?? this.pricePerDay,
+      totalPrice: totalPrice ?? this.totalPrice,
+      status: status ?? this.status,
+      durationType: durationType ?? this.durationType,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      insuranceOpted: insuranceOpted ?? this.insuranceOpted,
+      securityDeposit: securityDeposit ?? this.securityDeposit,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      invoiceUrl: invoiceUrl ?? this.invoiceUrl,
+      estimatedReturn: estimatedReturn ?? this.estimatedReturn,
+      distanceKm: distanceKm ?? this.distanceKm,
+      costEstimate: costEstimate ?? this.costEstimate,
+      cancelledBy: cancelledBy ?? this.cancelledBy,
+      cancelReason: cancelReason ?? this.cancelReason,
+      rescheduledFromBookingId: rescheduledFromBookingId ?? this.rescheduledFromBookingId,
+      usageDetails: usageDetails ?? this.usageDetails,
+      declineReason: declineReason ?? this.declineReason,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }
 
 // ── ReviewModel ───────────────────────────────────────────────────────────────

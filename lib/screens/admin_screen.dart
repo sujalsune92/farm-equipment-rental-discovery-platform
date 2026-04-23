@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../models/models.dart';
-import '../services/services.dart';
 import '../utils/app_theme.dart';
 import '../widgets/widgets.dart';
 
